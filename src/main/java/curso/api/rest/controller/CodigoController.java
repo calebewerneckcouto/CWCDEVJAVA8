@@ -1,13 +1,16 @@
 package curso.api.rest.controller;
 
-import java.util.List;
 import java.util.Optional;
 
+import javax.persistence.Cacheable;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -39,6 +42,8 @@ public class CodigoController {
         codigoRepository.deleteById(id);
         return new ResponseEntity<>("Código deletado com sucesso", HttpStatus.OK);
     }
+    
+    /*
 
     @GetMapping(value = "/", produces = "application/json")
     @CacheEvict(value = "cacheusuarios", allEntries = true)
@@ -47,6 +52,19 @@ public class CodigoController {
         List<Codigo> list = (List<Codigo>) codigoRepository.findAll();
         return new ResponseEntity<>(list, HttpStatus.OK);
     }
+    */
+    
+    
+    @GetMapping(value = "/", produces = "application/json")
+    public ResponseEntity<Page<Codigo>> listarCodigos(@RequestParam(defaultValue = "0") int page, 
+                                                      @RequestParam(defaultValue = "5") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Codigo> pageResult = codigoRepository.findAll(pageable);
+        return new ResponseEntity<>(pageResult, HttpStatus.OK);
+    }
+
+
+
 
     @GetMapping(value = "/{id}", produces = "application/json")
     @CacheEvict(value = "cacheusuarios", allEntries = true)
@@ -76,12 +94,16 @@ public class CodigoController {
     }
     
     
-    @GetMapping("/search")
-    public ResponseEntity<List<Codigo>> searchCodes(@RequestParam String keyword) {
-        // Chama o repositório para buscar por 'linguagem' ou 'descricao' ignorando maiúsculas/minúsculas
-        List<Codigo> dtoList = codigoRepository.findByLinguagemContainingIgnoreCaseOrDescricaoContainingIgnoreCase(keyword, keyword);
-        return ResponseEntity.ok(dtoList);
+    @GetMapping(value = "/search", produces = "application/json")
+    public ResponseEntity<Page<Codigo>> searchCodigos(@RequestParam String keyword,
+                                                      @RequestParam(defaultValue = "0") int page,
+                                                      @RequestParam(defaultValue = "5") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        // Alteração aqui: a busca vai comparar a keyword com linguagem ou descrição
+        Page<Codigo> result = codigoRepository.findByLinguagemContainingIgnoreCaseOrDescricaoContainingIgnoreCase(keyword, keyword, pageable);
+        return new ResponseEntity<>(result, HttpStatus.OK);
     }
+
 
 
 }

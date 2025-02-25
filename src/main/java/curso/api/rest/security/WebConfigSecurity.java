@@ -1,0 +1,86 @@
+package curso.api.rest.security;
+
+import java.util.Arrays;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import curso.api.rest.service.ImplementacaoUserDetailsSercice;
+
+@Configuration
+@EnableWebSecurity
+public class WebConfigSecurity extends WebSecurityConfigurerAdapter {
+
+    @Autowired
+    private ImplementacaoUserDetailsSercice implementacaoUserDetailsSercice;
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+
+        http.cors().configurationSource(corsConfigurationSource()) // Use the CORS configuration source
+
+            .and().csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+            .disable()
+            .authorizeRequests()
+
+            // Publicly accessible routes
+            .antMatchers("/").permitAll()
+            .antMatchers(HttpMethod.GET, "/codigos/**").permitAll()
+            .antMatchers(HttpMethod.POST, "/login").permitAll()
+            .antMatchers(HttpMethod.POST, "/codigos/**").permitAll()
+            .antMatchers(HttpMethod.PUT, "/codigos/**").permitAll()
+            .antMatchers(HttpMethod.DELETE, "/codigos/**").permitAll()
+
+            .anyRequest().authenticated()
+            .and()
+
+            .logout().logoutSuccessUrl("/index")
+            .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+            .and()
+
+            .addFilterBefore(new JWTLoginFilter("/login", authenticationManager()),
+                    UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(new JwtApiAutenticacaoFilter(),
+                    UsernamePasswordAuthenticationFilter.class);
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(implementacaoUserDetailsSercice)
+                .passwordEncoder(new BCryptPasswordEncoder());
+    }
+
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://127.0.0.1:5500")); // Or http://localhost:5500
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        
+        // PERMITE O CABEÇALHO AUTHORIZATION
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        
+        configuration.setExposedHeaders(Arrays.asList("Authorization")); // Expõe o cabeçalho para o frontend
+        configuration.setAllowCredentials(true);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration); // Aplica a configuração para todos os endpoints
+        return source;
+    }
+
+
+    // No longer need the WebMvcConfigurer bean
+}

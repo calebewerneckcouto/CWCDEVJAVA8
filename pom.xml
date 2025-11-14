@@ -13,7 +13,7 @@
 	<artifactId>cursospringrestapi</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>war</packaging>
-	<name>cursospringrestapi</name>
+	<name>cwcdev</name>
 	<description>Curso API REST Spring Boot</description>
 
 	<properties>
@@ -58,8 +58,6 @@
 			<version>42.7.3</version> <!-- Última versão estável -->
 		</dependency>
 
-
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
@@ -84,7 +82,6 @@
 			<version>0.7.0</version>
 		</dependency>
 
-
 		<!-- https://mvnrepository.com/artifact/com.zaxxer/HikariCP -->
 		<dependency>
 			<groupId>com.zaxxer</groupId>
@@ -96,11 +93,10 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-cache</artifactId>
 		</dependency>
-
-
 	</dependencies>
 
 	<build>
+		<finalName>cwcdev</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
@@ -108,5 +104,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
 </project>

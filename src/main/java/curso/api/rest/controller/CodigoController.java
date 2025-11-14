@@ -2,17 +2,15 @@ package curso.api.rest.controller;
 
 import java.util.Optional;
 
-import javax.persistence.Cacheable;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +26,7 @@ import curso.api.rest.repositoy.CodigoRepository;
 
 @RestController
 @RequestMapping(value = "/codigos")
+// ❌ REMOVIDO @Transactional da classe - era isso que causava o problema!
 public class CodigoController {
 
     @Autowired
@@ -42,33 +41,34 @@ public class CodigoController {
         codigoRepository.deleteById(id);
         return new ResponseEntity<>("Código deletado com sucesso", HttpStatus.OK);
     }
-    
-    /*
 
+    /**
+     * Lista códigos com paginação
+     * Endpoint: GET /codigos/?page=0&size=10
+     */
     @GetMapping(value = "/", produces = "application/json")
-    @CacheEvict(value = "cacheusuarios", allEntries = true)
-    @CachePut(value = "cacheusuarios")
-    public ResponseEntity<List<Codigo>> listarCodigos() {
-        List<Codigo> list = (List<Codigo>) codigoRepository.findAll();
-        return new ResponseEntity<>(list, HttpStatus.OK);
+    @Transactional(readOnly = true) // ✅ Apenas leitura
+    public ResponseEntity<Page<Codigo>> listarCodigos(
+            @RequestParam(defaultValue = "0") int page, 
+            @RequestParam(defaultValue = "10") int size) {
+        
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Codigo> pageResult = codigoRepository.findAll(pageable);
+            return new ResponseEntity<>(pageResult, HttpStatus.OK);
+        } catch (Exception e) {
+            System.err.println("❌ Erro ao listar códigos: " + e.getMessage());
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
-    */
-    
-    
-    @GetMapping(value = "/", produces = "application/json")
-    public ResponseEntity<Page<Codigo>> listarCodigos(@RequestParam(defaultValue = "0") int page, 
-                                                      @RequestParam(defaultValue = "5") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Codigo> pageResult = codigoRepository.findAll(pageable);
-        return new ResponseEntity<>(pageResult, HttpStatus.OK);
-    }
 
-
-
-
+    /**
+     * Busca código por ID
+     * Endpoint: GET /codigos/{id}
+     */
     @GetMapping(value = "/{id}", produces = "application/json")
-    @CacheEvict(value = "cacheusuarios", allEntries = true)
-    @CachePut(value = "cacheusuarios")
+    @Transactional(readOnly = true) // ✅ Apenas leitura
     public ResponseEntity<Codigo> buscarPorId(@PathVariable("id") Long id) {
         Optional<Codigo> codigo = codigoRepository.findById(id);
 
@@ -76,34 +76,71 @@ public class CodigoController {
                      .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
+    /**
+     * Cadastra novo código
+     * Endpoint: POST /codigos/
+     */
     @PostMapping(value = "/", produces = "application/json")
+    // ❌ REMOVIDO @Transactional - deixa o Spring gerenciar automaticamente
     public ResponseEntity<Codigo> cadastrar(@RequestBody @Valid Codigo codigo) {
-        Codigo codigoSalvo = codigoRepository.save(codigo);
-        return new ResponseEntity<>(codigoSalvo, HttpStatus.CREATED);
+        try {
+            System.out.println("📝 Cadastrando código: " + codigo.getLinguagem());
+            Codigo codigoSalvo = codigoRepository.save(codigo);
+            System.out.println("✅ Código salvo com ID: " + codigoSalvo.getId());
+            return new ResponseEntity<>(codigoSalvo, HttpStatus.CREATED);
+        } catch (Exception e) {
+            System.err.println("❌ Erro ao cadastrar código: " + e.getMessage());
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
+    /**
+     * Atualiza código existente
+     * Endpoint: PUT /codigos/{id}
+     */
     @PutMapping(value = "/{id}", produces = "application/json")
-    public ResponseEntity<Codigo> atualizar(@PathVariable("id") Long id, @RequestBody @Valid Codigo codigo) {
+    // ❌ REMOVIDO @Transactional
+    public ResponseEntity<Codigo> atualizar(
+            @PathVariable("id") Long id, 
+            @RequestBody @Valid Codigo codigo) {
+        
         if (!codigoRepository.existsById(id)) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
 
-        codigo.setId(id);
-        Codigo codigoAtualizado = codigoRepository.save(codigo);
-        return new ResponseEntity<>(codigoAtualizado, HttpStatus.OK);
+        try {
+            codigo.setId(id);
+            Codigo codigoAtualizado = codigoRepository.save(codigo);
+            return new ResponseEntity<>(codigoAtualizado, HttpStatus.OK);
+        } catch (Exception e) {
+            System.err.println("❌ Erro ao atualizar código: " + e.getMessage());
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
-    
-    
+
+    /**
+     * Busca códigos por palavra-chave
+     * Endpoint: GET /codigos/search?keyword=java&page=0&size=10
+     */
     @GetMapping(value = "/search", produces = "application/json")
-    public ResponseEntity<Page<Codigo>> searchCodigos(@RequestParam String keyword,
-                                                      @RequestParam(defaultValue = "0") int page,
-                                                      @RequestParam(defaultValue = "5") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        // Alteração aqui: a busca vai comparar a keyword com linguagem ou descrição
-        Page<Codigo> result = codigoRepository.findByLinguagemContainingIgnoreCaseOrDescricaoContainingIgnoreCase(keyword, keyword, pageable);
-        return new ResponseEntity<>(result, HttpStatus.OK);
+    @Transactional(readOnly = true) // ✅ Apenas leitura
+    public ResponseEntity<Page<Codigo>> searchCodigos(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Codigo> result = codigoRepository
+                .findByLinguagemContainingIgnoreCaseOrDescricaoContainingIgnoreCase(
+                    keyword, keyword, pageable);
+            return new ResponseEntity<>(result, HttpStatus.OK);
+        } catch (Exception e) {
+            System.err.println("❌ Erro na busca: " + e.getMessage());
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
-
-
-
 }

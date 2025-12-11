@@ -70,7 +70,7 @@ public class WebConfigSecurity extends WebSecurityConfigurerAdapter {
         configuration.setAllowedOrigins(Arrays.asList("http://127.0.0.1:5500", "https://cwc3d.net","http://localhost:3000", "http://127.0.0.1:3000"));
 
 
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS","teste"));
         
         // PERMITE O CABEÇALHO AUTHORIZATION
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
